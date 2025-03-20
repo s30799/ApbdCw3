@@ -21,7 +21,7 @@ public class Container
         Hight = hight;
         NetMass = netMass;
         Depth = depth;
-        MaxCapacity = 0;
+        MaxCapacity = 1000;
         GenerateSerialNumber();
     }
 
@@ -104,7 +104,7 @@ public class GasContainer : Container, IHazadNotifer
 {
     public double Preasure { get; set; }
 
-    public GasContainer(double mass, double hight, double netMass, double depth, double preasure) : 
+    public GasContainer(double mass, double hight, double netMass, double depth) : 
         base(mass, hight, netMass, depth)
     {
         Type = ContainerType.Gas;
@@ -154,7 +154,7 @@ public class RefrigratedContainer : Container
         { "Eggs", 19 }
     };
 
-    public RefrigratedContainer(double mass, double hight, double netMass, double depth, double temperature, string ProductType) :
+    public RefrigratedContainer(double mass, double hight, double netMass, double depth, string ProductType) :
         base(mass, hight, netMass, depth)
     {
         Type = ContainerType.Refrigrated;
@@ -201,3 +201,135 @@ public class RefrigratedContainer : Container
     }
 }
 
+public class Ship
+{
+    public string Name { get; set; }
+    public int MacContainers { get; private set; }
+    public double MaxSpeed { get; private set; }
+    public double MaXWeight { get; private set; }
+    public List<Container>  Containers { get; private set; }
+
+    public Ship(string name, int macContainers, double maxSpeed, double maXWeight)
+    {
+        Name = name;
+        MacContainers = macContainers;
+        MaxSpeed = maxSpeed;
+        MaXWeight = maXWeight;
+        Containers = new List<Container>();
+        
+    }
+
+    public void LoadContainer(Container container)
+    {
+        if (Containers.Count >= MacContainers)
+        {
+            throw new InvalidOperationException("Cannot load container more than a mac container!");
+        }
+        double totalWeight = Containers.Sum(c => c.Mass) + container.Mass;
+        if (totalWeight > MaXWeight)
+        {
+            throw new InvalidOperationException("Cannot load container more than a mac container!");
+        }
+        Containers.Add(container);
+        Console.WriteLine($"Loaded container: {container.SerialNum} for {Name}");
+    }
+
+    public void UnloadContainer(string serialNum)
+    {
+        Container container = Containers.FirstOrDefault(c => c.SerialNum == serialNum);
+        if (container == null)
+        {
+            throw new ArgumentException($"No container found for {serialNum}");
+        }
+        Containers.Remove(container);
+        Console.WriteLine($"Unloaded container: {container.SerialNum} for {Name}");
+    }
+
+    public void ReplaceContainer(string serialNum, Container newContainer)
+    {
+        UnloadContainer(serialNum);
+        LoadContainer(newContainer);
+    }
+
+    public void TransferContainer(string serialNum, Ship destShip)
+    {
+        Container container = Containers.FirstOrDefault(c => c.SerialNum == serialNum);
+        if (container == null)
+        {
+            throw new ArgumentException($"No container found for {serialNum}");
+        }
+        destShip.LoadContainer(container);
+        Containers.Remove(container);
+        Console.WriteLine($"Transfer container: {container.SerialNum} for {Name}");
+    }
+
+    public override string ToString()
+    {
+        return $"Ship {Name} - Containers: {Containers.Count}/{MacContainers}, Total Weight: {Containers.Sum(c => c.Mass)}kg/{MaXWeight}kg";
+    }
+}
+
+class program
+{
+    public static void Main(string[] args)
+    {
+        Console.WriteLine("Container Management system");
+        Console.WriteLine("=============================");
+        try
+        {
+        Ship s1 = new Ship("Hehe", 10, 30, 5000);
+        Ship s2 = new Ship("Yllo", 15, 25, 8000);
+        
+        Container standardContainer = new Container(100, 250, 100, 600);
+        LiquidContainer liquidContainer = new LiquidContainer(200, 200, 150, 500, false);
+        LiquidContainer hazardousLiquidContainer = new LiquidContainer(150, 200, 150, 500, true);
+        GasContainer gasContainer = new GasContainer(120, 180, 120, 450);
+        RefrigratedContainer refrigeratedContainer = new RefrigratedContainer(180, 220, 180, 550, "Fish");
+        
+        standardContainer.LoadCargo(200);
+        liquidContainer.LoadCargo(300);
+        gasContainer.LoadCargo(20);
+        refrigeratedContainer.LoadCargo(300);
+        
+        try
+        {
+            hazardousLiquidContainer.LoadCargo(200);
+        }
+        catch (OverfillException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        s1.LoadContainer(standardContainer);
+        s1.LoadContainer(liquidContainer);
+        s1.LoadContainer(gasContainer);
+        
+        s2.LoadContainer(refrigeratedContainer);
+        s2.LoadContainer(hazardousLiquidContainer);
+        
+        Console.WriteLine("\nShip status:");
+        Console.WriteLine(s1);
+        Console.WriteLine(s2);
+        
+        Console.WriteLine("\nTransferring container:");
+        s1.TransferContainer(gasContainer.SerialNum, s2);
+        
+        Console.WriteLine("\nUpdated ship status:");
+        Console.WriteLine(s1);
+        Console.WriteLine(s2);
+        
+        Console.WriteLine("\nUnloading container cargo:");
+        liquidContainer.UnloadCargo();
+        
+        Console.WriteLine("\nChanging refrigerated container product type:");
+        refrigeratedContainer.UnloadCargo();
+        refrigeratedContainer.ChangeProductType("Chocolate");
+        refrigeratedContainer.LoadCargo(250);
+        }
+        
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+}
